@@ -21,14 +21,15 @@ import java.time.LocalDate
 import play.api.Play.current
 import play.api.i18n.Messages.Implicits._
 import play.api.mvc._
+import uk.gov.hmrc.helptosavefrontend.connectors.HelpToSaveConnector
 import uk.gov.hmrc.helptosavefrontend.models.{ContactPreference, UserDetails}
+import uk.gov.hmrc.play.frontend.auth.connectors.AuthConnector
 import uk.gov.hmrc.play.frontend.controller.FrontendController
-
 import scala.concurrent.Future
 
 object HelpToSave extends HelpToSave
 
-trait HelpToSave extends FrontendController {
+trait HelpToSave extends FrontendController with HelpToSaveConnector {
 
   val user =
     UserDetails("Bob",
@@ -40,13 +41,17 @@ trait HelpToSave extends FrontendController {
       ContactPreference.Email
      )
 
-  val helpToSave = Action.async { implicit request ⇒
-		Future.successful(Ok(uk.gov.hmrc.helptosavefrontend.views.html.register.declaration(user)))
-  }
+  val helpToSave =
+    authorisedUser { implicit authContext ⇒ implicit request ⇒
+        Future.successful(Ok(uk.gov.hmrc.helptosavefrontend.views.html.register.declaration(user)))
+    }
+
 
   val start = Action.async{ implicit request ⇒
-    Future.successful(Ok(uk.gov.hmrc.helptosavefrontend.views.html.core.start()))
-  }
+      Future.successful(Ok(uk.gov.hmrc.helptosavefrontend.views.html.core.start()))
+    }
+
+
 
 
 }

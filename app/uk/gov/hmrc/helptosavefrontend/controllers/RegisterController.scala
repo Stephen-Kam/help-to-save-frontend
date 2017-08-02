@@ -38,56 +38,60 @@ import scala.concurrent.{ExecutionContext, Future}
 class RegisterController @Inject()(val messagesApi: MessagesApi,
                                    helpToSaveService: HelpToSaveService,
                                    sessionCacheConnector: SessionCacheConnector,
-                                   enrolmentService: EnrolmentService,
+                                   val enrolmentService: EnrolmentService,
                                    val app: Application)(implicit ec: ExecutionContext)
-  extends HelpToSaveAuth(app) with I18nSupport with Logging {
+  extends HelpToSaveAuth(app) with EnrolmentCheckBehaviour with I18nSupport with Logging {
 
-
-  def getConfirmDetailsPage: Action[AnyContent] = authorisedForHtsWithConfidence {
+  def getConfirmDetailsPage: Action[AnyContent] = authorisedForHtsWithInfo {
     implicit request ⇒
       implicit htsContext ⇒
-        retrieveUserInfo().fold(
-          {
-            e ⇒
+        checkIfAlreadyEnrolled{ _ ⇒
+          retrieveUserInfo().fold(
+            { e ⇒
               logger.warn(s"Could not retrieve user info: $e")
               InternalServerError
-          },
-          u ⇒ Ok(views.html.register.confirm_details(u))
-        )
+            },
+            u ⇒ Ok(views.html.register.confirm_details(u))
+          )
+        }
   }
 
-  def getCreateAccountHelpToSavePage: Action[AnyContent] = authorisedForHtsWithConfidence {
+  def getCreateAccountHelpToSavePage: Action[AnyContent] = authorisedForHtsWithInfo {
     implicit request ⇒
       implicit htsContext ⇒
-        Future.successful(Ok(views.html.register.create_account_help_to_save()))
+        checkIfAlreadyEnrolled{ _ ⇒
+          Future.successful(Ok(views.html.register.create_account_help_to_save()))
+        }
   }
 
-  def createAccountHelpToSave: Action[AnyContent] = authorisedForHtsWithConfidence {
+  def createAccountHelpToSave: Action[AnyContent] = authorisedForHtsWithInfo {
     implicit request ⇒
       implicit htsContext ⇒
-        val result = for {
-          userInfo ← retrieveUserInfo()
-          _        ← helpToSaveService.createAccount(userInfo).leftMap(submissionFailureToString)
-        } yield userInfo
+        checkIfAlreadyEnrolled { _ ⇒
+          val result = for {
+            userInfo ← retrieveUserInfo()
+            _ ← helpToSaveService.createAccount(userInfo).leftMap(submissionFailureToString)
+          } yield userInfo
 
-        // TODO: plug in actual pages below
-        result.fold(
-          error ⇒ {
-            // TODO: error or warning?
-            logger.error(s"Could not create account: $error")
-            Ok(uk.gov.hmrc.helptosavefrontend.views.html.core.stub_page(s"Account creation failed: $error"))
-          },
-          info ⇒ {
-            logger.info(s"Successfully created account for ${info.nino}")
-            // start the process to enrol the user but don't worry about the result
-            enrolmentService.enrolUser(info.nino).fold(
-              e ⇒ logger.warn(s"Could not start process to enrol user ${info.nino}: $e"),
-              _ ⇒ logger.info(s"Started process to enrol user ${info.nino}")
-            )
+          // TODO: plug in actual pages below
+          result.fold(
+            error ⇒ {
+              // TODO: error or warning?
+              logger.error(s"Could not create account: $error")
+              Ok(uk.gov.hmrc.helptosavefrontend.views.html.core.stub_page(s"Account creation failed: $error"))
+            },
+            info ⇒ {
+              logger.info(s"Successfully created account for ${info.nino}")
+              // start the process to enrol the user but don't worry about the result
+              enrolmentService.enrolUser(info.nino).fold(
+                e ⇒ logger.warn(s"Could not start process to enrol user ${info.nino}: $e"),
+                _ ⇒ logger.info(s"Started process to enrol user ${info.nino}")
+              )
 
-            Ok(uk.gov.hmrc.helptosavefrontend.views.html.core.stub_page("Successfully created account"))
-          }
-        )
+              Ok(uk.gov.hmrc.helptosavefrontend.views.html.core.stub_page("Successfully created account"))
+            }
+          )
+        }
   }
 
   private def submissionFailureToString(failure: SubmissionFailure): String =

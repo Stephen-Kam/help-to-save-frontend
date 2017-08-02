@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.helptosave.nsi
-
-import org.scalatest.Matchers
-import org.scalatest.concurrent.Eventually
-import uk.gov.hmrc.helptosavefrontend.models.NSIUserInfo
-
-trait ScenarioHelpers extends Matchers with Eventually {
-
-  def createAccount(userInfo: NSIUserInfo): Unit = {
-    val account = userInfo
-  }
-
-}
+//package uk.gov.hmrc.helptosave.nsi
+//
+//import org.scalatest.Matchers
+//import org.scalatest.concurrent.Eventually
+//import uk.gov.hmrc.helptosavefrontend.models.NSIUserInfo
+//
+//trait ScenarioHelpers extends Matchers with Eventually {
+//
+//  def createAccount(userInfo: NSIUserInfo): Unit = {
+//    val account = userInfo
+//  }
+//
+//}
